@@ -63,21 +63,18 @@ class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
             child: Align(
               alignment: widget.position,
               child: Material(
-                child: SizedBox(
-                  width: 100,
-                  child: AnimatedList(
-                    reverse: widget.reverse,
-                    key: _animatedListKey,
-                    initialItemCount: _listItemNotifier.listItem.length,
-                    physics: const NeverScrollableScrollPhysics(),
-                    shrinkWrap: true,
-                    itemBuilder: (context, index, animation) {
-                      final listItem = _listItemNotifier.listItem[index];
+                child: AnimatedList(
+                  reverse: widget.reverse,
+                  key: _animatedListKey,
+                  initialItemCount: _listItemNotifier.listItem.length,
+                  physics: const NeverScrollableScrollPhysics(),
+                  shrinkWrap: true,
+                  itemBuilder: (context, index, animation) {
+                    final listItem = _listItemNotifier.listItem[index];
 
-                      return widget.itemBuilder(
-                          context, listItem, index, animation);
-                    },
-                  ),
+                    return widget.itemBuilder(
+                        context, listItem, index, animation);
+                  },
                 ),
               ),
             ),
