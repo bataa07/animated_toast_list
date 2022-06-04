@@ -25,6 +25,7 @@ class ToastListOverlay<T> extends StatefulWidget {
     this.position = Alignment.topCenter,
     this.reverse = false,
     this.limit = 5,
+    this.width = 375,
     required this.itemBuilder,
   }) : super(key: key);
 
@@ -34,6 +35,7 @@ class ToastListOverlay<T> extends StatefulWidget {
   final bool reverse;
   final int limit;
   final ToastListItemBuilder<T> itemBuilder;
+  final double width;
 
   static ToastListOverlayState of<T>(BuildContext context) {
     assert(debugCheckHasToastListOverlay<T>(context));
@@ -63,18 +65,22 @@ class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
             child: Align(
               alignment: widget.position,
               child: Material(
-                child: AnimatedList(
-                  reverse: widget.reverse,
-                  key: _animatedListKey,
-                  initialItemCount: _listItemNotifier.listItem.length,
-                  physics: const NeverScrollableScrollPhysics(),
-                  shrinkWrap: true,
-                  itemBuilder: (context, index, animation) {
-                    final listItem = _listItemNotifier.listItem[index];
+                color: Colors.transparent,
+                child: Container(
+                  constraints: BoxConstraints(maxWidth: widget.width),
+                  child: AnimatedList(
+                    reverse: widget.reverse,
+                    key: _animatedListKey,
+                    initialItemCount: _listItemNotifier.listItem.length,
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    itemBuilder: (context, index, animation) {
+                      final listItem = _listItemNotifier.listItem[index];
 
-                    return widget.itemBuilder(
-                        context, listItem, index, animation);
-                  },
+                      return widget.itemBuilder(
+                          context, listItem, index, animation);
+                    },
+                  ),
                 ),
               ),
             ),
@@ -179,18 +185,21 @@ class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
 
     timerList.removeAt(itemIndex);
     _listItemNotifier.remove(itemIndex);
-    _animatedListKey.currentState?.removeItem(itemIndex, (context, animation) {
-      void handler(status) {
-        if (status == AnimationStatus.dismissed ||
-            status == AnimationStatus.completed) {
-          animation.removeStatusListener(handler);
-          listItemChangeListener();
+    _animatedListKey.currentState?.removeItem(
+      itemIndex,
+      (context, animation) {
+        void handler(status) {
+          if (status == AnimationStatus.dismissed ||
+              status == AnimationStatus.completed) {
+            animation.removeStatusListener(handler);
+            listItemChangeListener();
+          }
         }
-      }
 
-      animation.addStatusListener(handler);
-      return builder(context, animation);
-    });
+        animation.addStatusListener(handler);
+        return builder(context, animation);
+      },
+    );
   }
 }
 
