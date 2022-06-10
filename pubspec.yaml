@@ -1,7 +1,7 @@
 name: animated_toast_list
-description: A new Flutter package project.
+description: A list of toast with animation.
 version: 0.0.1
-homepage:
+homepage: https://github.com/bataa07/animated_toast_list
 
 environment:
   sdk: ">=2.17.0 <3.0.0"
