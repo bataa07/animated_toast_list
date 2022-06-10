@@ -60,20 +60,14 @@ context.hideToast(
 
 #  Example
   
-The figure below shows when the toast exceeds the limit. 
-  
+The figure below shows when the toast exceeds the limit.  
 ![2022-06-11_01-25-41_AdobeExpress](https://user-images.githubusercontent.com/89500759/173130420-087d0f0c-6329-4aba-8080-9d714de631b4.gif)
 
-The figure below shows how to remove the toast by clicking the close button.
-
+The figure below shows how to remove the toast by clicking the close button.  
 ![2022-06-11_01-25-41_AdobeExpress (1)](https://user-images.githubusercontent.com/89500759/173130435-0fdf874c-9436-40aa-87fc-b8bf714b524e.gif)
 
-In the figure below, you can see the toast without any problems even if you navigate to another screen.
+In the figure below, you can see the toast without any problems even if you navigate to another screen.  
 ![2022-06-11_01-25-41_AdobeExpress (2)](https://user-images.githubusercontent.com/89500759/173130457-e0111ce9-b8e3-4358-816c-dcd8881abd68.gif)
   
-The figure below shows the toast list reversed.
-  
+The figure below shows the toast list reversed.  
 ![2022-06-11_01-39-18_AdobeExpress](https://user-images.githubusercontent.com/89500759/173130469-906e485c-c884-4d58-b893-eac6751ebb08.gif)
-  
-
-
