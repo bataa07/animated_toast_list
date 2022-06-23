@@ -7,7 +7,7 @@ This package supports all platforms.
 #  Usage
 
 To use this package, wrap any widget with ToastListOverlay, as in the example below. For more details, see [the example](https://github.com/bataa07/animated_toast_list/blob/develop/example/lib/sample_app.dart).
-```
+```dart
 Widget build(BuildContext context) {
     return ToastListOverlay<MyToastModel>(
       itemBuilder: (BuildContext context, MyToastModel item, int index,
@@ -42,13 +42,13 @@ Widget build(BuildContext context) {
 | **timeoutDuration** | 5 seconds | Specifies how long toast will be displayed. |
   
 Now you can call the context.showToast method to display your toast. You can see more details in [the example](https://github.com/bataa07/animated_toast_list/blob/develop/example/lib/main_screen.dart).
-```
+```dart
   context.showToast(MyToastModel(ToastType.success.name, ToastType.success));
 ```
 > **Note:** MyToastModel is an example model.
 
 To close the Toast, call the context.hideToast method.
-```
+```dart
 context.hideToast(
   item,
   (context, animation) => ToastItem(
