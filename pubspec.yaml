@@ -1,6 +1,6 @@
 name: animated_toast_list
 description: Anyone who uses this package will feel more free. Because this package is generic, you can create the toast you want.
-version: 1.0.0
+version: 1.0.1
 homepage: https://github.com/bataa07/animated_toast_list
 
 environment:
