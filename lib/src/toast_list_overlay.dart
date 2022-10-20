@@ -6,7 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
 typedef ToastListItemBuilder<T> = Widget Function(
-    BuildContext context, T item, int index, Animation<double> animation);
+  BuildContext context,
+  T item,
+  int index,
+  Animation<double> animation,
+);
 
 class ToastTimer {
   int time; // nemegdsen buyu ehelsen time
@@ -78,7 +82,11 @@ class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
                       final listItem = _listItemNotifier.listItem[index];
 
                       return widget.itemBuilder(
-                          context, listItem, index, animation);
+                        context,
+                        listItem,
+                        index,
+                        animation,
+                      );
                     },
                   ),
                 ),
@@ -86,6 +94,7 @@ class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
             ),
           );
         });
+
         Overlay.of(context)?.insert(_overlayEntry!);
         _isOverlayVisible = true;
       } catch (e) {
@@ -97,42 +106,62 @@ class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
     SchedulerBinding.instance.addPostFrameCallback((_) {
       // executes after build'
       if (_listItemNotifier.listItem.isEmpty) {
-        countdownTimer =
-            Timer.periodic(const Duration(milliseconds: 500), (timer) {
-          if (_listItemNotifier.listItem.isEmpty) timer.cancel();
+        countdownTimer = Timer.periodic(
+          const Duration(milliseconds: 500),
+          (timer) {
+            if (_listItemNotifier.listItem.isEmpty) timer.cancel();
 
-          final currentTime = DateTime.now().millisecondsSinceEpoch;
+            final currentTime = DateTime.now().millisecondsSinceEpoch;
 
-          final overTimedItems = timerList.where((time) {
-            final difference = currentTime - time.time;
-            final maxDuration = widget.timeoutDuration.inMilliseconds;
-            if (difference >= maxDuration) {
-              return true;
+            final overTimedItems = timerList.where(
+              (time) {
+                final difference = currentTime - time.time;
+                final maxDuration = widget.timeoutDuration.inMilliseconds;
+
+                if (difference >= maxDuration) return true;
+
+                return false;
+              },
+            ).toList();
+
+            for (var overTimedItem in overTimedItems) {
+              removeItem(
+                overTimedItem.item,
+                (context, animation) => widget.itemBuilder(
+                  context,
+                  overTimedItem.item,
+                  overTimedItem.index,
+                  animation,
+                ),
+              );
             }
-            return false;
-          }).toList();
-
-          for (var e in overTimedItems) {
-            removeItem(
-                e.item,
-                (context, animation) =>
-                    widget.itemBuilder(context, e.item, e.index, animation));
-          }
-        });
+          },
+        );
       }
 
       if (_listItemNotifier.listItem.length == widget.limit) {
         final lastItem = _listItemNotifier.listItem.last;
+
         removeItem(
+          lastItem,
+          (context, animation) => widget.itemBuilder(
+            context,
             lastItem,
-            (context, animation) => widget.itemBuilder(context, lastItem,
-                _listItemNotifier.listItem.indexOf(lastItem), animation));
+            _listItemNotifier.listItem.indexOf(lastItem),
+            animation,
+          ),
+        );
       }
 
       timerList.insert(
+        0,
+        ToastTimer(
+          DateTime.now().millisecondsSinceEpoch,
+          widget.timeoutDuration,
+          toast,
           0,
-          ToastTimer(DateTime.now().millisecondsSinceEpoch,
-              widget.timeoutDuration, toast, 0));
+        ),
+      );
 
       _listItemNotifier.insert(0, toast);
       _animatedListKey.currentState?.insertItem(0);
@@ -148,7 +177,7 @@ class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
   void listItemChangeListener() {
     final listItem = _listItemNotifier.listItem;
 
-    if (listItem.isEmpty) {
+    if (listItem.isEmpty && _isOverlayVisible) {
       try {
         disposeAll();
       } catch (e) {
@@ -166,8 +195,10 @@ class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
   }
 
   void disposeAll() {
-    _overlayEntry!.remove();
-    countdownTimer!.cancel();
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _overlayEntry?.remove();
+      countdownTimer?.cancel();
+    });
   }
 
   @override
@@ -179,12 +210,16 @@ class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
   }
 
   void removeItem(
-      T item, Widget Function(BuildContext, Animation<double>) builder) {
+    T item,
+    Widget Function(BuildContext, Animation<double>) builder,
+  ) {
     final itemIndex = _listItemNotifier.listItem.indexOf(item);
+
     if (itemIndex == -1) return;
 
     timerList.removeAt(itemIndex);
     _listItemNotifier.remove(itemIndex);
+
     _animatedListKey.currentState?.removeItem(
       itemIndex,
       (context, animation) {
@@ -197,6 +232,7 @@ class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
         }
 
         animation.addStatusListener(handler);
+
         return builder(context, animation);
       },
     );
