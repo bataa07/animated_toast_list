@@ -10,3 +10,7 @@
 ## 1.0.1
 
 - fix `Error: AnimationController.dispose() called more than once.`
+
+## 1.0.2
+
+- remove warning `Try replacing the operator '?.' with '.'`

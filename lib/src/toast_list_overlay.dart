@@ -95,7 +95,7 @@ class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
           );
         });
 
-        Overlay.of(context)?.insert(_overlayEntry!);
+        Overlay.of(context).insert(_overlayEntry!);
         _isOverlayVisible = true;
       } catch (e) {
         // TODO handle error case
