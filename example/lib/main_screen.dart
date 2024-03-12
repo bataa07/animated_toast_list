@@ -40,6 +40,13 @@ class MainScreen extends StatelessWidget {
                       MyToastModel(ToastType.failed.name, ToastType.failed)),
                   child: const Text('Show Failed Toast'),
                 ),
+                TextButton(
+                  onPressed: () => context.showToast(
+                    MyToastModel('Custom timer', ToastType.info),
+                    duration: const Duration(seconds: 10),
+                  ),
+                  child: const Text('Show Toast with custom timer (10 sec)'),
+                ),
               ],
             ),
             Tooltip(

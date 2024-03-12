@@ -1,9 +1,10 @@
 import 'dart:async';
 
-import 'package:animated_toast_list/src/debug.dart';
-import 'package:animated_toast_list/src/toast_list_item_notifer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+
+import 'package:animated_toast_list/src/debug.dart';
+import 'package:animated_toast_list/src/toast_list_item_notifer.dart';
 
 typedef ToastListItemBuilder<T> = Widget Function(
   BuildContext context,
@@ -19,6 +20,27 @@ class ToastTimer {
   int index;
 
   ToastTimer(this.time, this.duration, this.item, this.index);
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+
+    return other is ToastTimer &&
+        other.time == time &&
+        other.duration == duration &&
+        other.item == item &&
+        other.index == index;
+  }
+
+  @override
+  int get hashCode {
+    return time.hashCode ^ duration.hashCode ^ item.hashCode ^ index.hashCode;
+  }
+
+  @override
+  String toString() {
+    return 'ToastTimer(time: $time, duration: $duration, item: $item, index: $index)';
+  }
 }
 
 class ToastListOverlay<T> extends StatefulWidget {
@@ -61,7 +83,11 @@ class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
   Timer? countdownTimer;
   final List<ToastTimer> timerList = [];
 
-  void show(BuildContext context, T toast) {
+  void show(
+    BuildContext context,
+    T toast, {
+    Duration? duration,
+  }) {
     if (!_isOverlayVisible) {
       try {
         _overlayEntry = OverlayEntry(builder: (context) {
@@ -116,7 +142,7 @@ class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
             final overTimedItems = timerList.where(
               (time) {
                 final difference = currentTime - time.time;
-                final maxDuration = widget.timeoutDuration.inMilliseconds;
+                final maxDuration = time.duration.inMilliseconds;
 
                 if (difference >= maxDuration) return true;
 
@@ -157,7 +183,7 @@ class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
         0,
         ToastTimer(
           DateTime.now().millisecondsSinceEpoch,
-          widget.timeoutDuration,
+          duration ?? widget.timeoutDuration,
           toast,
           0,
         ),
