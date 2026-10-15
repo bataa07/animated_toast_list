@@ -15,9 +15,9 @@ A minimal, dependency-free toast list for Flutter.
 
 | More toasts than the `limit` | Close button, timeout and `persist` |
 |:---:|:---:|
-| ![The oldest toast is hidden when the limit is reached](https://raw.githubusercontent.com/bataa07/animated_toast_list/develop/screenshots/limit.gif) | ![Toasts are hidden with the close button or after the timeout, except a persistent toast](https://raw.githubusercontent.com/bataa07/animated_toast_list/develop/screenshots/hide.gif) |
+| ![The oldest toast is hidden when the limit is reached](https://raw.githubusercontent.com/bataa07/animated_toast_list/main/screenshots/limit.gif) | ![Toasts are hidden with the close button or after the timeout, except a persistent toast](https://raw.githubusercontent.com/bataa07/animated_toast_list/main/screenshots/hide.gif) |
 | **Toasts stay while navigating** | **`position: Alignment.bottomCenter`, `reverse: true`** |
-| ![A toast stays visible on the next screen](https://raw.githubusercontent.com/bataa07/animated_toast_list/develop/screenshots/navigate.gif) | ![Toasts at the bottom of the screen, the newest last](https://raw.githubusercontent.com/bataa07/animated_toast_list/develop/screenshots/bottom.gif) |
+| ![A toast stays visible on the next screen](https://raw.githubusercontent.com/bataa07/animated_toast_list/main/screenshots/navigate.gif) | ![Toasts at the bottom of the screen, the newest last](https://raw.githubusercontent.com/bataa07/animated_toast_list/main/screenshots/bottom.gif) |
 
 # Installation
 
@@ -29,7 +29,7 @@ Requires Flutter 3.10 or newer (Dart 3).
 
 # Usage
 
-Wrap your `MaterialApp` (or `CupertinoApp`, `WidgetsApp`) with `ToastListOverlay` and build your toast in `itemBuilder`. Use the `animation` for the entrance and exit transitions. For more details, see [the example](https://github.com/bataa07/animated_toast_list/blob/develop/example/lib/main.dart).
+Wrap your `MaterialApp` (or `CupertinoApp`, `WidgetsApp`) with `ToastListOverlay` and build your toast in `itemBuilder`. Use the `animation` for the entrance and exit transitions. For more details, see [the example](https://github.com/bataa07/animated_toast_list/blob/main/example/lib/main.dart).
 
 ```dart
 Widget build(BuildContext context) {
@@ -53,10 +53,11 @@ Widget build(BuildContext context) {
 | **limit** | 5 | The maximum number of toasts displayed at the same time. When the limit is reached, the oldest toast is hidden. |
 | **width** | 375 | The maximum width of the toasts. |
 | **timeoutDuration** | 5 seconds | How long a toast is displayed. |
+| **useSafeArea** | true | Keeps the toasts out of the status bar, the notch and the home indicator. Set it to false to display them edge to edge. |
 
 ## Show a toast
 
-Call `context.showToast` from any widget below the `ToastListOverlay`. You can see more details in [the example](https://github.com/bataa07/animated_toast_list/blob/develop/example/lib/main.dart).
+Call `context.showToast` from any widget below the `ToastListOverlay`. You can see more details in [the example](https://github.com/bataa07/animated_toast_list/blob/main/example/lib/main.dart).
 
 ```dart
 context.showToast(MyToastModel('Saved', ToastType.success));
@@ -133,4 +134,4 @@ context.showToast(ErrorToast('Something went wrong'));
 
 ## Accessibility
 
-Since you build the toast, wrap it with `Semantics(liveRegion: true, child: ...)` so screen readers announce it when it appears, as in [the example](https://github.com/bataa07/animated_toast_list/blob/develop/example/lib/main.dart).
+Since you build the toast, wrap it with `Semantics(liveRegion: true, child: ...)` so screen readers announce it when it appears, as in [the example](https://github.com/bataa07/animated_toast_list/blob/main/example/lib/main.dart).

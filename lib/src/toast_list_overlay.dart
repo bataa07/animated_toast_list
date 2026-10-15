@@ -48,6 +48,7 @@ class ToastListOverlay<T> extends StatefulWidget {
     this.reverse = false,
     this.limit = 5,
     this.width = 375,
+    this.useSafeArea = true,
   }) : assert(limit > 0, 'limit must be greater than 0');
 
   /// The widget below this widget in the tree.
@@ -77,6 +78,13 @@ class ToastListOverlay<T> extends StatefulWidget {
 
   /// The maximum width of the toasts.
   final double width;
+
+  /// Whether the toasts avoid the parts of the screen that are covered by the
+  /// system, such as the status bar, the notch and the home indicator.
+  ///
+  /// Set it to false to display the toasts edge to edge, for example a toast
+  /// that fills the bottom of the screen.
+  final bool useSafeArea;
 
   /// Returns the state of the closest [ToastListOverlay] ancestor of
   /// [context] that can display toasts of type [T].
@@ -310,30 +318,33 @@ class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
   }
 
   Widget _buildOverlay(BuildContext context) {
-    return SafeArea(
-      child: Align(
-        alignment: widget.position,
-        child: Material(
-          type: MaterialType.transparency,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: widget.width),
-            child: AnimatedList(
-              key: _animatedListKey,
-              reverse: widget.reverse,
-              initialItemCount: _toasts.length,
-              physics: const NeverScrollableScrollPhysics(),
-              shrinkWrap: true,
-              itemBuilder: (context, index, animation) => widget.itemBuilder(
-                context,
-                _toasts[index].item,
-                index,
-                animation,
-              ),
+    final Widget toasts = Align(
+      alignment: widget.position,
+      child: Material(
+        type: MaterialType.transparency,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: widget.width),
+          child: AnimatedList(
+            key: _animatedListKey,
+            reverse: widget.reverse,
+            initialItemCount: _toasts.length,
+            physics: const NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
+            // Otherwise the list adds the padding of the MediaQuery, which
+            // SafeArea already handles.
+            padding: EdgeInsets.zero,
+            itemBuilder: (context, index, animation) => widget.itemBuilder(
+              context,
+              _toasts[index].item,
+              index,
+              animation,
             ),
           ),
         ),
       ),
     );
+
+    return widget.useSafeArea ? SafeArea(child: toasts) : toasts;
   }
 
   @override

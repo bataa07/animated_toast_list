@@ -9,13 +9,16 @@
 - The builder of `hideToast` is now optional. When it is omitted, the
   `itemBuilder` is used to animate the toast out.
 - `showToast` returns a `ToastHandle`, which hides exactly that toast.
-- `showToast` accepts a `duration`, and `persist: true` for toasts that are
-  not hidden automatically.
+- `showToast` accepts a `duration` (#13, thanks @yeikel16), and
+  `persist: true` for toasts that are not hidden automatically.
+- Add `useSafeArea`, which can be set to false to display the toasts edge to
+  edge (#12).
 - Toasts whose type is a subtype of the type argument of `ToastListOverlay`
   can be shown, for example the subclasses of a sealed class. Previously the
   types had to match exactly.
 - Nested `ToastListOverlay`s with different type arguments are supported.
-- Fix a new toast not being displayed until another frame was rendered.
+- Fix a new toast not being displayed until another frame was rendered, for
+  example when it was shown from a `GestureDetector` (#9).
 - Fix a toast disappearing when it was shown right after the last toast was
   hidden.
 - Fix the periodic timer leaking and still running after the

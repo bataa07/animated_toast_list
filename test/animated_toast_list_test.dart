@@ -22,6 +22,7 @@ Widget _app({
   bool reverse = false,
   int limit = 5,
   Duration timeoutDuration = const Duration(seconds: 5),
+  bool useSafeArea = true,
 }) {
   return ToastListOverlay<String>(
     itemBuilder: itemBuilder,
@@ -29,6 +30,7 @@ Widget _app({
     reverse: reverse,
     limit: limit,
     timeoutDuration: timeoutDuration,
+    useSafeArea: useSafeArea,
     child: const MaterialApp(
       home: Scaffold(body: SizedBox.expand(key: _homeKey)),
     ),
@@ -90,6 +92,40 @@ void main() {
     expect(tester.binding.hasScheduledFrame, isTrue);
     await tester.pumpAndSettle();
     expect(_toast('b'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+  });
+
+  // https://github.com/bataa07/animated_toast_list/issues/9
+  testWidgets('shows every toast shown from a GestureDetector', (
+    tester,
+  ) async {
+    var count = 0;
+    await tester.pumpWidget(
+      ToastListOverlay<String>(
+        itemBuilder: _buildToast,
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) => GestureDetector(
+              // Unlike a button, a GestureDetector does not animate when it is
+              // tapped, so no other frame is scheduled.
+              onTap: () => context.showToast('${++count}'),
+              child: const ColoredBox(color: Colors.blue),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    for (var i = 0; i < 3; i++) {
+      await tester.tap(find.byType(GestureDetector));
+      await tester.pumpAndSettle();
+    }
+
+    expect(_toast('1'), findsOneWidget);
+    expect(_toast('2'), findsOneWidget);
+    expect(_toast('3'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
@@ -292,6 +328,73 @@ void main() {
 
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
+  });
+
+  group('useSafeArea', () {
+    // The test view is 800x600 logical pixels.
+    void setViewPadding(WidgetTester tester) {
+      tester.view.padding = FakeViewPadding(
+        top: 50 * tester.view.devicePixelRatio,
+        bottom: 40 * tester.view.devicePixelRatio,
+      );
+      addTearDown(tester.view.reset);
+    }
+
+    Future<Rect> showToastAt(
+      WidgetTester tester, {
+      required Alignment position,
+      required bool useSafeArea,
+    }) async {
+      await tester.pumpWidget(
+        _app(position: position, useSafeArea: useSafeArea),
+      );
+      _homeContext(tester).showToast('a');
+      await tester.pumpAndSettle();
+      final Rect rect = tester.getRect(find.byType(SizeTransition));
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      return rect;
+    }
+
+    testWidgets('keeps the toasts out of the padding by default', (
+      tester,
+    ) async {
+      setViewPadding(tester);
+
+      final Rect top = await showToastAt(
+        tester,
+        position: Alignment.topCenter,
+        useSafeArea: true,
+      );
+      expect(top.top, 50);
+
+      final Rect bottom = await showToastAt(
+        tester,
+        position: Alignment.bottomCenter,
+        useSafeArea: true,
+      );
+      expect(bottom.bottom, 600 - 40);
+    });
+
+    testWidgets('displays the toasts edge to edge when false', (
+      tester,
+    ) async {
+      setViewPadding(tester);
+
+      final Rect top = await showToastAt(
+        tester,
+        position: Alignment.topCenter,
+        useSafeArea: false,
+      );
+      expect(top.top, 0);
+
+      final Rect bottom = await showToastAt(
+        tester,
+        position: Alignment.bottomCenter,
+        useSafeArea: false,
+      );
+      expect(bottom.bottom, 600);
+    });
   });
 
   testWidgets('cancels the timers when it is disposed', (tester) async {
