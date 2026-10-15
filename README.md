@@ -23,7 +23,7 @@ Requires Flutter 3.10 or newer (Dart 3).
 
 # Usage
 
-Wrap your `MaterialApp` (or `CupertinoApp`, `WidgetsApp`) with `ToastListOverlay` and build your toast in `itemBuilder`. Use the `animation` for the entrance and exit transitions. For more details, see [the example](https://github.com/bataa07/animated_toast_list/blob/develop/example/lib/sample_app.dart).
+Wrap your `MaterialApp` (or `CupertinoApp`, `WidgetsApp`) with `ToastListOverlay` and build your toast in `itemBuilder`. Use the `animation` for the entrance and exit transitions. For more details, see [the example](https://github.com/bataa07/animated_toast_list/blob/develop/example/lib/main.dart).
 
 ```dart
 Widget build(BuildContext context) {
@@ -50,7 +50,7 @@ Widget build(BuildContext context) {
 
 ## Show a toast
 
-Call `context.showToast` from any widget below the `ToastListOverlay`. You can see more details in [the example](https://github.com/bataa07/animated_toast_list/blob/develop/example/lib/main_screen.dart).
+Call `context.showToast` from any widget below the `ToastListOverlay`. You can see more details in [the example](https://github.com/bataa07/animated_toast_list/blob/develop/example/lib/main.dart).
 
 ```dart
 context.showToast(MyToastModel('Saved', ToastType.success));
@@ -127,7 +127,7 @@ context.showToast(ErrorToast('Something went wrong'));
 
 ## Accessibility
 
-Since you build the toast, wrap it with `Semantics(liveRegion: true, child: ...)` so screen readers announce it when it appears, as in [the example](https://github.com/bataa07/animated_toast_list/blob/develop/example/lib/toast_item.dart).
+Since you build the toast, wrap it with `Semantics(liveRegion: true, child: ...)` so screen readers announce it when it appears, as in [the example](https://github.com/bataa07/animated_toast_list/blob/develop/example/lib/main.dart).
 
 # Example
 
