@@ -291,7 +291,13 @@ class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
 
           animation.removeStatusListener(handleStatusChange);
           _removingCount--;
-          _removeOverlayIfIdle();
+          // The list disposes the animation of the removed toast in a
+          // microtask. Removing the overlay entry during this frame can
+          // unmount the list before that microtask on the web, which disposes
+          // the animation twice. Wait until the frame is done instead.
+          SchedulerBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _removeOverlayIfIdle();
+          });
         }
 
         animation.addStatusListener(handleStatusChange);

@@ -231,6 +231,33 @@ void main() {
     expect(find.byType(AnimatedList), findsNothing);
   });
 
+  testWidgets('hides the last toast when frames run without microtasks', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app());
+    final BuildContext context = _homeContext(tester);
+
+    context.showToast('a');
+    await tester.pumpAndSettle();
+
+    context.hideToast('a');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // The web engine runs both phases of a frame before it flushes the
+    // microtasks, unlike pump().
+    final Duration timestamp = Duration(
+      microseconds: tester.binding.clock.now().microsecondsSinceEpoch,
+    );
+    tester.binding
+      ..handleBeginFrame(timestamp + const Duration(seconds: 1))
+      ..handleDrawFrame();
+    await tester.pumpAndSettle();
+
+    expect(_toast('a'), findsNothing);
+    expect(find.byType(AnimatedList), findsNothing);
+  });
+
   testWidgets('keeps the toast above a newly pushed route', (tester) async {
     await tester.pumpWidget(_app());
     final BuildContext context = _homeContext(tester);
