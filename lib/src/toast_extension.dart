@@ -10,7 +10,11 @@ extension ToastListExtension on BuildContext {
   /// The toast is hidden after [duration], or after
   /// [ToastListOverlay.timeoutDuration] if [duration] is null. If [persist]
   /// is true, the toast stays until it is hidden with [hideToast] or the
-  /// returned [ToastHandle].
+  /// returned [ToastHandle], or until it is the oldest toast when
+  /// [ToastListOverlay.limit] is reached.
+  ///
+  /// It can be called with any context below the [ToastListOverlay], also
+  /// in [State.initState] and with the context of a navigator key.
   ToastHandle showToast<T>(
     T toast, {
     Duration? duration,

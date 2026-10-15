@@ -22,3 +22,19 @@ jobs:
       - run: flutter test
         working-directory: example
       - run: dart pub publish --dry-run
+
+  # Tests the oldest Flutter version the package supports.
+  minimum-sdk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.10.0
+
+      # flutter_lints 6 needs a newer SDK. The lints are checked by the other job.
+      - run: |
+          sed -i 's/flutter_lints: ^6.0.0/flutter_lints: ^2.0.0/' pubspec.yaml example/pubspec.yaml
+      - run: flutter pub get
+      - run: flutter test

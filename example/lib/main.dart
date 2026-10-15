@@ -25,6 +25,7 @@ class SampleApp extends StatelessWidget {
       // limit: 3,
       // timeoutDuration: const Duration(seconds: 3),
       // width: 400,
+      // useSafeArea: false,
       itemBuilder: (context, item, index, animation) =>
           ToastItem(animation: animation, item: item),
       child: MaterialApp(

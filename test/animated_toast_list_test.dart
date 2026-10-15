@@ -23,6 +23,7 @@ Widget _app({
   int limit = 5,
   Duration timeoutDuration = const Duration(seconds: 5),
   bool useSafeArea = true,
+  Key? appKey,
 }) {
   return ToastListOverlay<String>(
     itemBuilder: itemBuilder,
@@ -31,8 +32,9 @@ Widget _app({
     limit: limit,
     timeoutDuration: timeoutDuration,
     useSafeArea: useSafeArea,
-    child: const MaterialApp(
-      home: Scaffold(body: SizedBox.expand(key: _homeKey)),
+    child: MaterialApp(
+      key: appKey,
+      home: const Scaffold(body: SizedBox.expand(key: _homeKey)),
     ),
   );
 }
@@ -582,6 +584,264 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets('hides a toast that is not displayed yet', (tester) async {
+    await tester.pumpWidget(_app());
+    final BuildContext context = _homeContext(tester);
+
+    // The first toast waits for the list to be built.
+    context
+      ..showToast('a', persist: true)
+      ..hideToast('a');
+    await tester.pumpAndSettle();
+    expect(_toast('a'), findsNothing);
+    expect(find.byType(AnimatedList), findsNothing);
+  });
+
+  testWidgets('removes the overlay after hiding a toast that was not built', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app(limit: 1));
+    final BuildContext context = _homeContext(tester);
+
+    context.showToast('a');
+    await tester.pumpAndSettle();
+    // Hidden in the frame it is inserted, so its exit builder is never called.
+    context.showToast('b').hide();
+    // Evicted by the limit in the frame it is inserted.
+    context
+      ..showToast('c')
+      ..showToast('d');
+    await tester.pumpAndSettle();
+    expect(_toast('d'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    expect(find.byType(AnimatedList), findsNothing);
+  });
+
+  testWidgets('removes the overlay after hiding a toast below the screen', (
+    tester,
+  ) async {
+    Widget tall(BuildContext c, String item, int i, Animation<double> a) =>
+        SizeTransition(
+          sizeFactor: a,
+          child: SizedBox(height: 200, child: Text('toast $item')),
+        );
+    await tester.pumpWidget(_app(itemBuilder: tall, limit: 10));
+    final BuildContext context = _homeContext(tester);
+
+    final List<ToastHandle> toasts = <ToastHandle>[];
+    for (var i = 0; i < 7; i++) {
+      toasts.add(context.showToast('$i', persist: true));
+      await tester.pumpAndSettle();
+    }
+    // The oldest toast is below the screen, so its exit builder is not called.
+    toasts.first.hide();
+    await tester.pumpAndSettle();
+    for (final ToastHandle toast in toasts) {
+      toast.hide();
+    }
+    await tester.pumpAndSettle();
+    expect(find.byType(AnimatedList), findsNothing);
+  });
+
+  testWidgets('hides the extra toasts when the limit is lowered', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app(limit: 3));
+    final BuildContext context = _homeContext(tester);
+    for (final String item in <String>['a', 'b', 'c']) {
+      context.showToast(item);
+      await tester.pumpAndSettle();
+    }
+
+    await tester.pumpWidget(_app(limit: 1));
+    await tester.pumpAndSettle();
+    expect(_toast('a'), findsNothing);
+    expect(_toast('b'), findsNothing);
+    expect(_toast('c'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('shows toasts after the Overlay was recreated', (tester) async {
+    await tester.pumpWidget(_app(appKey: const ValueKey<int>(1)));
+    final ToastHandle a = _homeContext(tester).showToast('a', persist: true);
+    await tester.pumpAndSettle();
+
+    // For example, the app is rebuilt with a new key after a locale change.
+    await tester.pumpWidget(_app(appKey: const ValueKey<int>(2)));
+    _homeContext(tester).showToast('b');
+    await tester.pumpAndSettle();
+    expect(_toast('a'), findsOneWidget);
+    expect(_toast('b'), findsOneWidget);
+    expect(a.isShowing, isTrue);
+
+    a.hide();
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    expect(find.byType(AnimatedList), findsNothing);
+  });
+
+  testWidgets('shows a toast from initState', (tester) async {
+    await tester.pumpWidget(
+      ToastListOverlay<String>(
+        itemBuilder: _buildToast,
+        child: MaterialApp(
+          home: _InitStateToast(onInit: (context) => context.showToast('a')),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(_toast('a'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+  });
+
+  group('with nested Navigators', () {
+    // Like a ShellRoute of go_router: the shell has its own Navigator, and a
+    // full screen route is pushed on the root Navigator.
+    testWidgets('shows a toast from a root route after one from the shell', (
+      tester,
+    ) async {
+      final GlobalKey<NavigatorState> root = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(
+        ToastListOverlay<String>(
+          itemBuilder: _buildToast,
+          child: MaterialApp(
+            navigatorKey: root,
+            home: Scaffold(
+              body: Navigator(
+                onGenerateRoute: (_) => MaterialPageRoute<void>(
+                  builder: (_) => const SizedBox.expand(key: Key('shell')),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      tester.element(find.byKey(const Key('shell'))).showToast('a');
+      await tester.pumpAndSettle();
+      expect(_toast('a').hitTestable(), findsOneWidget);
+
+      root.currentState!.push(
+        MaterialPageRoute<void>(
+          builder: (_) => const SizedBox.expand(key: Key('details')),
+        ),
+      );
+      await tester.pumpAndSettle();
+      tester.element(find.byKey(const Key('details'))).showToast('b');
+      await tester.pumpAndSettle();
+      expect(_toast('a').hitTestable(), findsOneWidget);
+      expect(_toast('b').hitTestable(), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('shows a toast from a second tab', (tester) async {
+      final ValueNotifier<int> tab = ValueNotifier<int>(0);
+      addTearDown(tab.dispose);
+      Widget tabNavigator(int index) => Navigator(
+            onGenerateRoute: (_) => MaterialPageRoute<void>(
+              builder: (_) => SizedBox.expand(key: ValueKey<int>(index)),
+            ),
+          );
+      await tester.pumpWidget(
+        ToastListOverlay<String>(
+          itemBuilder: _buildToast,
+          child: MaterialApp(
+            home: ValueListenableBuilder<int>(
+              valueListenable: tab,
+              builder: (context, index, _) => IndexedStack(
+                index: index,
+                children: <Widget>[tabNavigator(0), tabNavigator(1)],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      tester.element(find.byKey(const ValueKey<int>(0))).showToast('a');
+      await tester.pumpAndSettle();
+      tab.value = 1;
+      await tester.pumpAndSettle();
+      tester.element(find.byKey(const ValueKey<int>(1))).showToast('b');
+      await tester.pumpAndSettle();
+      expect(_toast('a').hitTestable(), findsOneWidget);
+      expect(_toast('b').hitTestable(), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+    });
+  });
+
+  group('shows a toast from a context above the Navigator', () {
+    testWidgets('of a navigator key', (tester) async {
+      final GlobalKey<NavigatorState> navigator = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(
+        ToastListOverlay<String>(
+          itemBuilder: _buildToast,
+          child: MaterialApp(
+            navigatorKey: navigator,
+            home: const SizedBox.expand(),
+          ),
+        ),
+      );
+
+      navigator.currentContext!.showToast('a');
+      await tester.pumpAndSettle();
+      expect(_toast('a'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('of MaterialApp.builder', (tester) async {
+      late BuildContext builderContext;
+      await tester.pumpWidget(
+        ToastListOverlay<String>(
+          itemBuilder: _buildToast,
+          child: MaterialApp(
+            builder: (context, child) {
+              builderContext = context;
+              return child!;
+            },
+            home: const SizedBox.expand(),
+          ),
+        ),
+      );
+
+      builderContext.showToast('a');
+      await tester.pumpAndSettle();
+      expect(_toast('a'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+    });
+  });
+
+  // The README of 1.0.2 suggested wrapping any widget, such as a screen.
+  testWidgets('works when it wraps a screen of a Navigator', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: _ScreenWithToasts()));
+
+    await tester.tap(find.text('show'));
+    await tester.pumpAndSettle();
+    // Rebuilds the ToastListOverlay while a toast is displayed.
+    await tester.tap(find.text('show'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(_toast('1'), findsOneWidget);
+    expect(_toast('2'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('asserts that limit is greater than 0', (tester) async {
     expect(() => _app(limit: 0), throwsAssertionError);
   });
@@ -599,4 +859,53 @@ class _SuccessToast extends _Toast {
 
 class _FailedToast extends _Toast {
   _FailedToast(super.message);
+}
+
+class _InitStateToast extends StatefulWidget {
+  const _InitStateToast({required this.onInit});
+
+  final void Function(BuildContext context) onInit;
+
+  @override
+  State<_InitStateToast> createState() => _InitStateToastState();
+}
+
+class _InitStateToastState extends State<_InitStateToast> {
+  @override
+  void initState() {
+    super.initState();
+    widget.onInit(context);
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.expand();
+}
+
+class _ScreenWithToasts extends StatefulWidget {
+  const _ScreenWithToasts();
+
+  @override
+  State<_ScreenWithToasts> createState() => _ScreenWithToastsState();
+}
+
+class _ScreenWithToastsState extends State<_ScreenWithToasts> {
+  var _count = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return ToastListOverlay<String>(
+      itemBuilder: _buildToast,
+      child: Scaffold(
+        body: Builder(
+          builder: (context) => TextButton(
+            onPressed: () {
+              setState(() => _count++);
+              context.showToast('$_count');
+            },
+            child: const Text('show'),
+          ),
+        ),
+      ),
+    );
+  }
 }

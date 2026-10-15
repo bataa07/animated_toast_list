@@ -57,7 +57,7 @@ Widget build(BuildContext context) {
 
 ## Show a toast
 
-Call `context.showToast` from any widget below the `ToastListOverlay`. You can see more details in [the example](https://github.com/bataa07/animated_toast_list/blob/main/example/lib/main.dart).
+Call `context.showToast` from any widget below the `ToastListOverlay`, even in `initState`. You can see more details in [the example](https://github.com/bataa07/animated_toast_list/blob/main/example/lib/main.dart).
 
 ```dart
 context.showToast(MyToastModel('Saved', ToastType.success));
@@ -68,11 +68,17 @@ context.showToast(
   duration: const Duration(seconds: 10),
 );
 
-// Not hidden automatically.
+// Not hidden after a timeout. It is still hidden when the limit is reached.
 context.showToast(
   MyToastModel('Update available', ToastType.info),
   persist: true,
 );
+```
+
+To show a toast outside of a screen, for example from a service, use the context of the `navigatorKey` of your app:
+
+```dart
+navigatorKey.currentContext!.showToast(MyToastModel('Saved', ToastType.success));
 ```
 
 > **Note:** `MyToastModel` is an example model. Any type can be used as a toast.
