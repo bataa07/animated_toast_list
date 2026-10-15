@@ -1,5 +1,6 @@
-import 'package:animated_toast_list/src/toast_list_overlay.dart';
 import 'package:flutter/widgets.dart';
+
+import 'toast_list_overlay.dart';
 
 /// Asserts that the given context has a [ToastListOverlay] ancestor.
 ///
@@ -10,7 +11,7 @@ import 'package:flutter/widgets.dart';
 /// relevant Widget's build method:
 ///
 /// ```dart
-/// assert(debugCheckHasToastListOverlay(context));
+/// assert(debugCheckHasToastListOverlay<T>(context));
 /// ```
 ///
 /// This method can be expensive (it walks the element tree).
@@ -22,9 +23,16 @@ bool debugCheckHasToastListOverlay<T>(BuildContext context) {
       throw FlutterError.fromParts(<DiagnosticsNode>[
         ErrorSummary('No ToastListOverlay widget found.'),
         ErrorDescription(
-            '${context.widget.runtimeType} widgets require a ToastListOverlay widget ancestor.'),
+          '${context.widget.runtimeType} widgets require a ToastListOverlay<$T> '
+          'widget ancestor.',
+        ),
+        ErrorHint(
+          'Make sure the type argument of showToast and hideToast matches the '
+          'type argument of the ToastListOverlay.',
+        ),
         ...context.describeMissingAncestor(
-            expectedAncestorType: ToastListOverlay<T>),
+          expectedAncestorType: ToastListOverlay<T>,
+        ),
       ]);
     }
     return true;

@@ -1,16 +1,15 @@
-# sample
+# animated_toast_list example
 
-A new Flutter project.
+An example app that shows how to use the
+[animated_toast_list](https://pub.dev/packages/animated_toast_list) package.
 
-## Getting Started
+```sh
+flutter run
+```
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- [`lib/sample_app.dart`](lib/sample_app.dart) wraps the app with
+  `ToastListOverlay` and defines how a toast looks.
+- [`lib/main_screen.dart`](lib/main_screen.dart) shows toasts with
+  `context.showToast`.
+- [`lib/toast_item.dart`](lib/toast_item.dart) is the toast widget, which hides
+  itself with `context.hideToast`.

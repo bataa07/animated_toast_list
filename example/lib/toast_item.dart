@@ -1,23 +1,22 @@
+import 'package:animated_toast_list/animated_toast_list.dart';
 import 'package:flutter/material.dart';
 import 'package:sample/toast_model.dart';
 import 'package:sample/toast_type.dart';
 
 class ToastItem extends StatelessWidget {
   const ToastItem({
-    Key? key,
-    this.onTap,
+    super.key,
     required this.animation,
     required this.item,
-  }) : super(key: key);
+  });
 
   final Animation<double> animation;
-  final VoidCallback? onTap;
   final MyToastModel item;
 
   @override
   Widget build(BuildContext context) {
-    TextStyle textStyle =
-        Theme.of(context).textTheme.headline6!.copyWith(color: Colors.white);
+    final TextStyle? textStyle =
+        Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white);
 
     return Padding(
       padding: const EdgeInsets.all(8.0),
@@ -25,7 +24,7 @@ class ToastItem extends StatelessWidget {
         opacity: animation,
         child: SizeTransition(
           sizeFactor: animation,
-          child: Container(
+          child: DecoratedBox(
             decoration: BoxDecoration(
               color: _getTypeColor(item.type),
               borderRadius: const BorderRadius.all(Radius.circular(12.0)),
@@ -33,8 +32,11 @@ class ToastItem extends StatelessWidget {
             child: ListTile(
               title: Text('Item ${item.message}', style: textStyle),
               trailing: IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => onTap?.call()),
+                icon: const Icon(Icons.close),
+                color: Colors.white,
+                tooltip: 'Close',
+                onPressed: () => context.hideToast(item),
+              ),
             ),
           ),
         ),
@@ -43,17 +45,11 @@ class ToastItem extends StatelessWidget {
   }
 
   Color _getTypeColor(ToastType type) {
-    switch (type) {
-      case ToastType.success:
-        return const Color(0xFF3DD89B);
-      case ToastType.warning:
-        return const Color(0xFFFFD873);
-      case ToastType.info:
-        return const Color(0xFF17A2b8);
-      case ToastType.failed:
-        return const Color(0xFFFF4E43);
-      default:
-        return const Color(0xFF3DD89B);
-    }
+    return switch (type) {
+      ToastType.success => const Color(0xFF3DD89B),
+      ToastType.warning => const Color(0xFFFFD873),
+      ToastType.info => const Color(0xFF17A2B8),
+      ToastType.failed => const Color(0xFFFF4E43),
+    };
   }
 }

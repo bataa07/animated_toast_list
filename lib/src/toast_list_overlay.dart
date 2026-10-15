@@ -1,10 +1,15 @@
 import 'dart:async';
 
-import 'package:animated_toast_list/src/debug.dart';
-import 'package:animated_toast_list/src/toast_list_item_notifer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
+import 'debug.dart';
+
+/// Signature for a function that builds the widget of a single toast.
+///
+/// [item] is the value that was passed to [ToastListExtension.showToast],
+/// [index] is the position of the toast in the list and [animation] drives
+/// the entrance and exit transitions of the toast.
 typedef ToastListItemBuilder<T> = Widget Function(
   BuildContext context,
   T item,
@@ -12,35 +17,71 @@ typedef ToastListItemBuilder<T> = Widget Function(
   Animation<double> animation,
 );
 
-class ToastTimer {
-  int time; // nemegdsen buyu ehelsen time
-  Duration duration;
-  dynamic item;
-  int index;
-
-  ToastTimer(this.time, this.duration, this.item, this.index);
-}
-
+/// Displays an animated list of toasts above [child].
+///
+/// Place a [ToastListOverlay] above your [MaterialApp] (or any other widget
+/// that provides an [Overlay], such as [WidgetsApp] or [Navigator]) and call
+/// [ToastListExtension.showToast] from any [BuildContext] below it:
+///
+/// ```dart
+/// ToastListOverlay<MyToastModel>(
+///   itemBuilder: (context, item, index, animation) => MyToast(
+///     item: item,
+///     animation: animation,
+///   ),
+///   child: MaterialApp(home: const HomeScreen()),
+/// );
+///
+/// // Somewhere below the MaterialApp:
+/// context.showToast(MyToastModel('Saved!'));
+/// ```
+///
+/// The type argument [T] is the type of the toast items. It has to match the
+/// type used with [ToastListExtension.showToast] and
+/// [ToastListExtension.hideToast].
 class ToastListOverlay<T> extends StatefulWidget {
+  /// Creates a widget that displays toasts of type [T] above [child].
   const ToastListOverlay({
-    Key? key,
+    super.key,
     required this.child,
+    required this.itemBuilder,
     this.timeoutDuration = const Duration(seconds: 5),
     this.position = Alignment.topCenter,
     this.reverse = false,
     this.limit = 5,
     this.width = 375,
-    required this.itemBuilder,
-  }) : super(key: key);
+  }) : assert(limit > 0, 'limit must be greater than 0');
 
+  /// The widget below this widget in the tree.
   final Widget child;
+
+  /// How long a toast stays visible before it is hidden automatically.
   final Duration timeoutDuration;
+
+  /// Where the toasts are displayed on the screen.
   final Alignment position;
+
+  /// Whether the newest toast is displayed at the bottom of the list instead
+  /// of the top.
   final bool reverse;
+
+  /// The maximum number of toasts displayed at the same time.
+  ///
+  /// When a new toast is shown and the limit is reached, the oldest toast is
+  /// hidden.
   final int limit;
+
+  /// Builds the widget of each toast.
   final ToastListItemBuilder<T> itemBuilder;
+
+  /// The maximum width of the toasts.
   final double width;
 
+  /// Returns the state of the closest [ToastListOverlay] ancestor of
+  /// [context].
+  ///
+  /// Prefer [ToastListExtension.showToast] and
+  /// [ToastListExtension.hideToast] over calling this method directly.
   static ToastListOverlayState of<T>(BuildContext context) {
     assert(debugCheckHasToastListOverlay<T>(context));
 
@@ -53,152 +94,171 @@ class ToastListOverlay<T> extends StatefulWidget {
   ToastListOverlayState<T> createState() => ToastListOverlayState<T>();
 }
 
+/// The state of a [ToastListOverlay], used to show and hide toasts.
+///
+/// Usually obtained through [ToastListExtension.showToast] and
+/// [ToastListExtension.hideToast].
 class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
+  final List<_ToastEntry<T>> _toasts = <_ToastEntry<T>>[];
+  GlobalKey<AnimatedListState> _animatedListKey =
+      GlobalKey<AnimatedListState>();
   OverlayEntry? _overlayEntry;
-  bool _isOverlayVisible = false;
-  final _listItemNotifier = ToastListItemNotifier<T>();
-  final _animatedListKey = GlobalKey<AnimatedListState>();
-  Timer? countdownTimer;
-  final List<ToastTimer> timerList = [];
 
+  /// The number of toasts waiting for the list of a new overlay entry to be
+  /// built.
+  int _pendingCount = 0;
+
+  /// The number of toasts whose exit animation is still running.
+  int _removingCount = 0;
+
+  /// Shows [toast] in the [Overlay] of [context].
   void show(BuildContext context, T toast) {
-    if (!_isOverlayVisible) {
-      try {
-        _overlayEntry = OverlayEntry(builder: (context) {
-          return SafeArea(
-            child: Align(
-              alignment: widget.position,
-              child: Material(
-                color: Colors.transparent,
-                child: Container(
-                  constraints: BoxConstraints(maxWidth: widget.width),
-                  child: AnimatedList(
-                    reverse: widget.reverse,
-                    key: _animatedListKey,
-                    initialItemCount: _listItemNotifier.listItem.length,
-                    physics: const NeverScrollableScrollPhysics(),
-                    shrinkWrap: true,
-                    itemBuilder: (context, index, animation) {
-                      final listItem = _listItemNotifier.listItem[index];
+    if (_overlayEntry == null) _insertOverlay(context);
 
-                      return widget.itemBuilder(
-                        context,
-                        listItem,
-                        index,
-                        animation,
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
-          );
-        });
-
-        Overlay.of(context).insert(_overlayEntry!);
-        _isOverlayVisible = true;
-      } catch (e) {
-        // TODO handle error case
-        debugPrint('ToastListOverlay $e');
-      }
+    if (_animatedListKey.currentState != null) {
+      _insert(toast);
+      return;
     }
 
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      // executes after build'
-      if (_listItemNotifier.listItem.isEmpty) {
-        countdownTimer = Timer.periodic(
-          const Duration(milliseconds: 500),
-          (timer) {
-            if (_listItemNotifier.listItem.isEmpty) timer.cancel();
+    // The list inside a new overlay entry is built during the next frame.
+    // Wait for it so the entrance animation of the toast is played.
+    _pendingCount++;
+    SchedulerBinding.instance
+      ..addPostFrameCallback((_) {
+        _pendingCount--;
+        if (mounted) _insert(toast);
+      })
+      ..ensureVisualUpdate();
+  }
 
-            final currentTime = DateTime.now().millisecondsSinceEpoch;
+  /// Hides [item] with an exit animation.
+  ///
+  /// [builder] builds the toast while it animates out. If it is omitted,
+  /// [ToastListOverlay.itemBuilder] is used.
+  ///
+  /// Does nothing if [item] is not displayed.
+  void removeItem(T item, [AnimatedRemovedItemBuilder? builder]) {
+    final int index = _toasts.indexWhere((toast) => toast.item == item);
+    if (index == -1) return;
 
-            final overTimedItems = timerList.where(
-              (time) {
-                final difference = currentTime - time.time;
-                final maxDuration = widget.timeoutDuration.inMilliseconds;
+    _removeAt(index, builder);
+  }
 
-                if (difference >= maxDuration) return true;
+  void _insertOverlay(BuildContext context) {
+    final OverlayState overlay = Overlay.of(context);
+    // A new key for each entry, so the list of a previous entry that is still
+    // being unmounted is never reused.
+    _animatedListKey = GlobalKey<AnimatedListState>();
+    _overlayEntry = OverlayEntry(builder: _buildOverlay);
+    overlay.insert(_overlayEntry!);
+  }
 
-                return false;
-              },
-            ).toList();
+  void _removeOverlay() {
+    final OverlayEntry? overlayEntry = _overlayEntry;
+    if (overlayEntry == null) return;
 
-            for (var overTimedItem in overTimedItems) {
-              removeItem(
-                overTimedItem.item,
-                (context, animation) => widget.itemBuilder(
-                  context,
-                  overTimedItem.item,
-                  overTimedItem.index,
-                  animation,
-                ),
-              );
-            }
-          },
-        );
+    _overlayEntry = null;
+    overlayEntry
+      ..remove()
+      ..dispose();
+  }
+
+  void _removeOverlayIfIdle() {
+    if (_toasts.isEmpty && _pendingCount == 0 && _removingCount == 0) {
+      _removeOverlay();
+    }
+  }
+
+  void _insert(T toast) {
+    while (_toasts.length >= widget.limit) {
+      _removeAt(_toasts.length - 1);
+    }
+
+    final _ToastEntry<T> entry = _ToastEntry<T>(toast);
+    entry.timer = Timer(widget.timeoutDuration, () {
+      final int index = _toasts.indexOf(entry);
+      if (index != -1) _removeAt(index);
+    });
+
+    _toasts.insert(0, entry);
+    _animatedListKey.currentState?.insertItem(0);
+  }
+
+  void _removeAt(int index, [AnimatedRemovedItemBuilder? builder]) {
+    final _ToastEntry<T> entry = _toasts.removeAt(index);
+    entry.timer?.cancel();
+
+    final AnimatedListState? animatedList = _animatedListKey.currentState;
+    if (animatedList == null) {
+      _removeOverlayIfIdle();
+      return;
+    }
+
+    _removingCount++;
+    var isListening = false;
+    animatedList.removeItem(index, (context, animation) {
+      // The builder is called on every frame of the exit animation, but the
+      // listener must only be added once.
+      if (!isListening) {
+        isListening = true;
+        void handleStatusChange(AnimationStatus status) {
+          if (status != AnimationStatus.dismissed) return;
+
+          animation.removeStatusListener(handleStatusChange);
+          _removingCount--;
+          _removeOverlayIfIdle();
+        }
+
+        animation.addStatusListener(handleStatusChange);
       }
 
-      if (_listItemNotifier.listItem.length == widget.limit) {
-        final lastItem = _listItemNotifier.listItem.last;
-
-        removeItem(
-          lastItem,
-          (context, animation) => widget.itemBuilder(
-            context,
-            lastItem,
-            _listItemNotifier.listItem.indexOf(lastItem),
-            animation,
-          ),
-        );
-      }
-
-      timerList.insert(
-        0,
-        ToastTimer(
-          DateTime.now().millisecondsSinceEpoch,
-          widget.timeoutDuration,
-          toast,
-          0,
-        ),
-      );
-
-      _listItemNotifier.insert(0, toast);
-      _animatedListKey.currentState?.insertItem(0);
+      return builder != null
+          ? builder(context, animation)
+          : widget.itemBuilder(context, entry.item, index, animation);
     });
   }
 
-  @override
-  void initState() {
-    super.initState();
-    assert(widget.limit > 0, 'Limit must have greather than 0');
+  Widget _buildOverlay(BuildContext context) {
+    return SafeArea(
+      child: Align(
+        alignment: widget.position,
+        child: Material(
+          type: MaterialType.transparency,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: widget.width),
+            child: AnimatedList(
+              key: _animatedListKey,
+              reverse: widget.reverse,
+              initialItemCount: _toasts.length,
+              physics: const NeverScrollableScrollPhysics(),
+              shrinkWrap: true,
+              itemBuilder: (context, index, animation) => widget.itemBuilder(
+                context,
+                _toasts[index].item,
+                index,
+                animation,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
-  void listItemChangeListener() {
-    final listItem = _listItemNotifier.listItem;
-
-    if (listItem.isEmpty && _isOverlayVisible) {
-      try {
-        disposeAll();
-      } catch (e) {
-        debugPrint('$e');
-      }
-
-      _isOverlayVisible = false;
-    }
+  @override
+  void didUpdateWidget(ToastListOverlay<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _overlayEntry?.markNeedsBuild();
   }
 
   @override
   void dispose() {
-    disposeAll();
+    for (final _ToastEntry<T> toast in _toasts) {
+      toast.timer?.cancel();
+    }
+    _toasts.clear();
+    _removeOverlay();
     super.dispose();
-  }
-
-  void disposeAll() {
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      _overlayEntry?.remove();
-      countdownTimer?.cancel();
-    });
   }
 
   @override
@@ -208,44 +268,20 @@ class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
       child: widget.child,
     );
   }
+}
 
-  void removeItem(
-    T item,
-    Widget Function(BuildContext, Animation<double>) builder,
-  ) {
-    final itemIndex = _listItemNotifier.listItem.indexOf(item);
+class _ToastEntry<T> {
+  _ToastEntry(this.item);
 
-    if (itemIndex == -1) return;
-
-    timerList.removeAt(itemIndex);
-    _listItemNotifier.remove(itemIndex);
-
-    _animatedListKey.currentState?.removeItem(
-      itemIndex,
-      (context, animation) {
-        void handler(status) {
-          if (status == AnimationStatus.dismissed ||
-              status == AnimationStatus.completed) {
-            animation.removeStatusListener(handler);
-            listItemChangeListener();
-          }
-        }
-
-        animation.addStatusListener(handler);
-
-        return builder(context, animation);
-      },
-    );
-  }
+  final T item;
+  Timer? timer;
 }
 
 class _ToastListScope extends InheritedWidget {
   const _ToastListScope({
-    Key? key,
-    required Widget child,
+    required super.child,
     required ToastListOverlayState toastListOverlayState,
-  })  : _toastListOverlayState = toastListOverlayState,
-        super(key: key, child: child);
+  }) : _toastListOverlayState = toastListOverlayState;
 
   final ToastListOverlayState _toastListOverlayState;
 
