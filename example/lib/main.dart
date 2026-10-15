@@ -67,7 +67,8 @@ class MainScreen extends StatelessWidget {
                   child: Text('Show ${_capitalize(type.name)} Toast'),
                 ),
               FilledButton.tonal(
-                // Stays until the close button is pressed.
+                // Not hidden after a timeout, only with the close button or
+                // when the limit is reached.
                 onPressed: () => context.showToast(
                   MyToastModel('Stays until you close it', ToastType.info),
                   persist: true,

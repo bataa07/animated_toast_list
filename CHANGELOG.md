@@ -7,7 +7,8 @@
   `ToastListOverlayState.listItemChangeListener` and
   `ToastListOverlayState.disposeAll`.
 - **Breaking:** `showToast` throws a descriptive error when no `Overlay` is
-  found, instead of silently ignoring the toast.
+  found, instead of silently ignoring the toast. When it is called while
+  widgets build, the error is reported with `FlutterError.reportError`.
 - The builder of `hideToast` is now optional. When it is omitted, the
   `itemBuilder` is used to animate the toast out.
 - `showToast` returns a `ToastHandle`, which hides exactly that toast.
@@ -19,11 +20,13 @@
   can be shown, for example the subclasses of a sealed class. Previously the
   types had to match exactly.
 - Nested `ToastListOverlay`s with different type arguments are supported.
-- Toasts are displayed in the outermost `Overlay`, usually the one of the root
-  `Navigator`. Toasts shown from a nested `Navigator`, such as the one of a
-  tab or of a go_router `ShellRoute`, are no longer hidden by other tabs or
-  routes.
-- `showToast` can be called in `initState`, and with a context above the
+- Toasts are displayed in the closest `Overlay` above the `ToastListOverlay`,
+  or in the `Overlay` of the root `Navigator` when it wraps the app. Toasts
+  shown from a nested `Navigator`, such as the one of a tab or of a go_router
+  `ShellRoute`, are no longer hidden by other tabs or routes, and toasts move
+  to the new `Overlay` when the app is rebuilt with a new key.
+- `showToast`, `hideToast` and `ToastHandle.hide` can be called in
+  `initState` and `dispose`, and `showToast` with a context above the
   `Navigator`, such as the context of a navigator key or of
   `MaterialApp.builder`.
 - Fix a new toast not being displayed until another frame was rendered, for

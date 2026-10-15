@@ -29,7 +29,7 @@ Requires Flutter 3.10 or newer (Dart 3).
 
 # Usage
 
-Wrap your `MaterialApp` (or `CupertinoApp`, `WidgetsApp`) with `ToastListOverlay` and build your toast in `itemBuilder`. Use the `animation` for the entrance and exit transitions. For more details, see [the example](https://github.com/bataa07/animated_toast_list/blob/main/example/lib/main.dart).
+Wrap your `MaterialApp` (or `CupertinoApp`, `WidgetsApp`) with `ToastListOverlay` and build your toast in `itemBuilder`. Use the `animation` for the entrance and exit transitions. The toasts are displayed in the `Overlay` of the root `Navigator`, above every screen, tab and dialog. For more details, see [the example](https://github.com/bataa07/animated_toast_list/blob/main/example/lib/main.dart).
 
 ```dart
 Widget build(BuildContext context) {
@@ -132,7 +132,7 @@ ToastListOverlay<AppToast>(
     ErrorToast(:final message) =>
       MyErrorToast(message: message, animation: animation),
   },
-  child: MaterialApp(home: const HomeScreen()),
+  child: const MaterialApp(home: HomeScreen()),
 );
 
 context.showToast(ErrorToast('Something went wrong'));
@@ -141,3 +141,7 @@ context.showToast(ErrorToast('Something went wrong'));
 ## Accessibility
 
 Since you build the toast, wrap it with `Semantics(liveRegion: true, child: ...)` so screen readers announce it when it appears, as in [the example](https://github.com/bataa07/animated_toast_list/blob/main/example/lib/main.dart).
+
+## package:material_ui
+
+The toasts are placed on a transparent `Material` of `package:flutter/material.dart`. If your app uses `package:material_ui` instead, wrap your toast in a `Material` of `package:material_ui`, so that its ink effects and default text style work.

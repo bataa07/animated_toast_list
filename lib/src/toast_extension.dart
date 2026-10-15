@@ -34,9 +34,12 @@ extension ToastListExtension on BuildContext {
   /// [builder] builds the toast while it animates out. If it is omitted,
   /// [ToastListOverlay.itemBuilder] is used.
   ///
-  /// If several displayed toasts are equal to [toast], the newest one is
-  /// hidden. Use the [ToastHandle] returned by [showToast] to hide a specific
-  /// toast. Does nothing if [toast] is not displayed.
+  /// If several shown toasts are equal to [toast], the newest one is hidden.
+  /// Use the [ToastHandle] returned by [showToast] to hide a specific toast.
+  /// Does nothing if no shown toast is equal to [toast].
+  ///
+  /// It can be called with any context below the [ToastListOverlay], also in
+  /// [State.initState] and [State.dispose].
   void hideToast<T>(T toast, [AnimatedRemovedItemBuilder? builder]) {
     ToastListOverlay.of<T>(this).removeItem(toast, builder);
   }
