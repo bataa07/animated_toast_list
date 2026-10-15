@@ -31,6 +31,20 @@ void main() {
     expect(find.text('Item failed'), findsNothing);
   });
 
+  testWidgets('keeps a persistent toast until it is closed', (tester) async {
+    await tester.pumpWidget(const SampleApp());
+
+    await tester.tap(find.text('Show Persistent Toast'));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(minutes: 1));
+    await tester.pumpAndSettle();
+    expect(find.text('Item persistent'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Close'));
+    await tester.pumpAndSettle();
+    expect(find.text('Item persistent'), findsNothing);
+  });
+
   testWidgets('keeps the toast visible while navigating', (tester) async {
     await tester.pumpWidget(const SampleApp());
 

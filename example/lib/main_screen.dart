@@ -40,6 +40,14 @@ class MainScreen extends StatelessWidget {
                       MyToastModel(ToastType.failed.name, ToastType.failed)),
                   child: const Text('Show Failed Toast'),
                 ),
+                TextButton(
+                  // Stays until the close button is pressed.
+                  onPressed: () => context.showToast(
+                    MyToastModel('persistent', ToastType.info),
+                    persist: true,
+                  ),
+                  child: const Text('Show Persistent Toast'),
+                ),
               ],
             ),
             Tooltip(

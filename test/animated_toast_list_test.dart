@@ -297,7 +297,176 @@ void main() {
     );
   });
 
+  testWidgets('throws when no ToastListOverlay accepts the type', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app());
+
+    expect(
+      () => _homeContext(tester).showToast(1),
+      throwsA(isA<FlutterError>()),
+    );
+  });
+
+  testWidgets('shows toasts whose type is a subtype of the overlay type', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ToastListOverlay<_Toast>(
+        itemBuilder: (context, item, index, animation) =>
+            Text('toast ${item.message}'),
+        child: const MaterialApp(home: SizedBox.expand(key: _homeKey)),
+      ),
+    );
+    final BuildContext context = _homeContext(tester);
+
+    context.showToast(_SuccessToast('a'));
+    await tester.pumpAndSettle();
+    expect(_toast('a'), findsOneWidget);
+
+    final _FailedToast failed = _FailedToast('b');
+    context.showToast(failed);
+    await tester.pumpAndSettle();
+    expect(_toast('b'), findsOneWidget);
+
+    context.hideToast(failed);
+    await tester.pumpAndSettle();
+    expect(_toast('b'), findsNothing);
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('uses the closest ToastListOverlay that accepts the type', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ToastListOverlay<String>(
+        itemBuilder: (context, item, index, animation) => Text('string $item'),
+        child: ToastListOverlay<int>(
+          itemBuilder: (context, item, index, animation) => Text('int $item'),
+          child: const MaterialApp(home: SizedBox.expand(key: _homeKey)),
+        ),
+      ),
+    );
+    final BuildContext context = _homeContext(tester);
+
+    context
+      ..showToast('a')
+      ..showToast(1);
+    await tester.pumpAndSettle();
+    expect(find.text('string a'), findsOneWidget);
+    expect(find.text('int 1'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('hides a toast after its own duration', (tester) async {
+    await tester.pumpWidget(_app());
+
+    _homeContext(tester).showToast('a', duration: const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(_toast('a'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(_toast('a'), findsNothing);
+  });
+
+  testWidgets('keeps a persistent toast until it is hidden', (tester) async {
+    await tester.pumpWidget(_app());
+
+    final ToastHandle toast = _homeContext(tester).showToast(
+      'a',
+      persist: true,
+    );
+    expect(toast.isShowing, isTrue);
+    await tester.pumpAndSettle();
+
+    await tester.pump(const Duration(minutes: 1));
+    await tester.pumpAndSettle();
+    expect(_toast('a'), findsOneWidget);
+    expect(toast.isShowing, isTrue);
+
+    toast.hide();
+    expect(toast.isShowing, isFalse);
+    await tester.pumpAndSettle();
+    expect(_toast('a'), findsNothing);
+    expect(find.byType(AnimatedList), findsNothing);
+
+    // Hiding it again does nothing.
+    toast.hide();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('hides the toast of a handle among equal toasts', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app());
+    final BuildContext context = _homeContext(tester);
+
+    final ToastHandle first = context.showToast('a', persist: true);
+    await tester.pumpAndSettle();
+    final ToastHandle second = context.showToast('a', persist: true);
+    await tester.pumpAndSettle();
+    expect(_toast('a'), findsNWidgets(2));
+
+    first.hide();
+    await tester.pumpAndSettle();
+    expect(_toast('a'), findsOneWidget);
+    expect(first.isShowing, isFalse);
+    expect(second.isShowing, isTrue);
+
+    second.hide();
+    await tester.pumpAndSettle();
+    expect(_toast('a'), findsNothing);
+  });
+
+  testWidgets('does not show a toast hidden before it was displayed', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app());
+
+    _homeContext(tester).showToast('a').hide();
+    await tester.pumpAndSettle();
+    expect(_toast('a'), findsNothing);
+    expect(find.byType(AnimatedList), findsNothing);
+  });
+
+  testWidgets('hides a persistent toast when the limit is reached', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app(limit: 1));
+    final BuildContext context = _homeContext(tester);
+
+    final ToastHandle toast = context.showToast('a', persist: true);
+    await tester.pumpAndSettle();
+    context.showToast('b');
+    await tester.pumpAndSettle();
+
+    expect(_toast('a'), findsNothing);
+    expect(toast.isShowing, isFalse);
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('asserts that limit is greater than 0', (tester) async {
     expect(() => _app(limit: 0), throwsAssertionError);
   });
+}
+
+sealed class _Toast {
+  _Toast(this.message);
+
+  final String message;
+}
+
+class _SuccessToast extends _Toast {
+  _SuccessToast(super.message);
+}
+
+class _FailedToast extends _Toast {
+  _FailedToast(super.message);
 }

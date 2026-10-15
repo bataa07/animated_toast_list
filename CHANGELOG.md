@@ -8,6 +8,13 @@
   `ToastListOverlayState.disposeAll`.
 - The builder of `hideToast` is now optional. When it is omitted, the
   `itemBuilder` is used to animate the toast out.
+- `showToast` returns a `ToastHandle`, which hides exactly that toast.
+- `showToast` accepts a `duration`, and `persist: true` for toasts that are
+  not hidden automatically.
+- Toasts whose type is a subtype of the type argument of `ToastListOverlay`
+  can be shown, for example the subclasses of a sealed class. Previously the
+  types had to match exactly.
+- Nested `ToastListOverlay`s with different type arguments are supported.
 - Fix a new toast not being displayed until another frame was rendered.
 - Fix a toast disappearing when it was shown right after the last toast was
   hidden.

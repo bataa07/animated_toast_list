@@ -1,5 +1,5 @@
 name: animated_toast_list
-description: A generic, animated toast list for Flutter. Design your own toast widget and show, stack and hide toasts with any animation.
+description: A minimal, dependency-free toast list for Flutter. You design the toast widget; the package stacks, animates and hides it.
 version: 2.0.0
 homepage: https://github.com/bataa07/animated_toast_list
 repository: https://github.com/bataa07/animated_toast_list

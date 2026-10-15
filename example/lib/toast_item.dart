@@ -18,24 +18,28 @@ class ToastItem extends StatelessWidget {
     final TextStyle? textStyle =
         Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white);
 
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: FadeTransition(
-        opacity: animation,
-        child: SizeTransition(
-          sizeFactor: animation,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: _getTypeColor(item.type),
-              borderRadius: const BorderRadius.all(Radius.circular(12.0)),
-            ),
-            child: ListTile(
-              title: Text('Item ${item.message}', style: textStyle),
-              trailing: IconButton(
-                icon: const Icon(Icons.close),
-                color: Colors.white,
-                tooltip: 'Close',
-                onPressed: () => context.hideToast(item),
+    // Lets screen readers announce the toast when it appears.
+    return Semantics(
+      liveRegion: true,
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: FadeTransition(
+          opacity: animation,
+          child: SizeTransition(
+            sizeFactor: animation,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: _getTypeColor(item.type),
+                borderRadius: const BorderRadius.all(Radius.circular(12.0)),
+              ),
+              child: ListTile(
+                title: Text('Item ${item.message}', style: textStyle),
+                trailing: IconButton(
+                  icon: const Icon(Icons.close),
+                  color: Colors.white,
+                  tooltip: 'Close',
+                  onPressed: () => context.hideToast(item),
+                ),
               ),
             ),
           ),

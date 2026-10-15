@@ -3,8 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
-import 'debug.dart';
-
 /// Signature for a function that builds the widget of a single toast.
 ///
 /// [item] is the value that was passed to [ToastListExtension.showToast],
@@ -36,9 +34,9 @@ typedef ToastListItemBuilder<T> = Widget Function(
 /// context.showToast(MyToastModel('Saved!'));
 /// ```
 ///
-/// The type argument [T] is the type of the toast items. It has to match the
-/// type used with [ToastListExtension.showToast] and
-/// [ToastListExtension.hideToast].
+/// The type argument [T] is the type of the toast items. Toasts of type [T]
+/// and its subtypes can be shown, so a sealed class or a common supertype
+/// can be used for different kinds of toasts.
 class ToastListOverlay<T> extends StatefulWidget {
   /// Creates a widget that displays toasts of type [T] above [child].
   const ToastListOverlay({
@@ -56,6 +54,9 @@ class ToastListOverlay<T> extends StatefulWidget {
   final Widget child;
 
   /// How long a toast stays visible before it is hidden automatically.
+  ///
+  /// Can be overridden for a single toast with the `duration` argument of
+  /// [ToastListExtension.showToast].
   final Duration timeoutDuration;
 
   /// Where the toasts are displayed on the screen.
@@ -68,7 +69,7 @@ class ToastListOverlay<T> extends StatefulWidget {
   /// The maximum number of toasts displayed at the same time.
   ///
   /// When a new toast is shown and the limit is reached, the oldest toast is
-  /// hidden.
+  /// hidden, even if it persists.
   final int limit;
 
   /// Builds the widget of each toast.
@@ -78,20 +79,68 @@ class ToastListOverlay<T> extends StatefulWidget {
   final double width;
 
   /// Returns the state of the closest [ToastListOverlay] ancestor of
-  /// [context].
+  /// [context] that can display toasts of type [T].
+  ///
+  /// That is the closest [ToastListOverlay] whose type argument is [T] or a
+  /// supertype of [T].
   ///
   /// Prefer [ToastListExtension.showToast] and
   /// [ToastListExtension.hideToast] over calling this method directly.
   static ToastListOverlayState of<T>(BuildContext context) {
-    assert(debugCheckHasToastListOverlay<T>(context));
+    ToastListOverlayState? result;
+    context.visitAncestorElements((element) {
+      if (element is StatefulElement) {
+        final State state = element.state;
+        if (state is ToastListOverlayState && state._accepts<T>()) {
+          result = state;
+          return false;
+        }
+      }
+      return true;
+    });
 
-    final _ToastListScope scope =
-        context.dependOnInheritedWidgetOfExactType<_ToastListScope>()!;
-    return scope._toastListOverlayState;
+    if (result == null) {
+      throw FlutterError.fromParts(<DiagnosticsNode>[
+        ErrorSummary('No ToastListOverlay widget found.'),
+        ErrorDescription(
+          '${context.widget.runtimeType} widgets require a ToastListOverlay '
+          'widget ancestor whose type argument is $T or a supertype of $T.',
+        ),
+        ErrorHint(
+          'Wrap your app with a ToastListOverlay<$T>. If the toast is a '
+          'subtype of the type argument of your ToastListOverlay, make sure '
+          'it is not typed as dynamic or as an unrelated type, or pass the '
+          'type argument explicitly, for example showToast<MyToast>(toast).',
+        ),
+        ...context.describeMissingAncestor(
+          expectedAncestorType: ToastListOverlay,
+        ),
+      ]);
+    }
+    return result!;
   }
 
   @override
   ToastListOverlayState<T> createState() => ToastListOverlayState<T>();
+}
+
+/// A toast shown with [ToastListExtension.showToast].
+///
+/// Use it to hide a specific toast, for example a toast that persists until
+/// a task is done.
+abstract class ToastHandle {
+  /// Whether the toast is displayed or about to be displayed.
+  ///
+  /// Becomes false as soon as the toast starts to hide.
+  bool get isShowing;
+
+  /// Hides the toast with an exit animation.
+  ///
+  /// [builder] builds the toast while it animates out. If it is omitted,
+  /// [ToastListOverlay.itemBuilder] is used.
+  ///
+  /// Does nothing if the toast is already hidden.
+  void hide([AnimatedRemovedItemBuilder? builder]);
 }
 
 /// The state of a [ToastListOverlay], used to show and hide toasts.
@@ -99,36 +148,56 @@ class ToastListOverlay<T> extends StatefulWidget {
 /// Usually obtained through [ToastListExtension.showToast] and
 /// [ToastListExtension.hideToast].
 class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
+  /// The displayed toasts, the newest first.
   final List<_ToastEntry<T>> _toasts = <_ToastEntry<T>>[];
+
+  /// The toasts waiting for the list of a new overlay entry to be built.
+  final List<_ToastEntry<T>> _pendingToasts = <_ToastEntry<T>>[];
+
   GlobalKey<AnimatedListState> _animatedListKey =
       GlobalKey<AnimatedListState>();
   OverlayEntry? _overlayEntry;
 
-  /// The number of toasts waiting for the list of a new overlay entry to be
-  /// built.
-  int _pendingCount = 0;
-
   /// The number of toasts whose exit animation is still running.
   int _removingCount = 0;
 
+  bool _accepts<S>() => <S>[] is List<T>;
+
   /// Shows [toast] in the [Overlay] of [context].
-  void show(BuildContext context, T toast) {
+  ///
+  /// The toast is hidden after [duration], or after
+  /// [ToastListOverlay.timeoutDuration] if [duration] is null. If [persist]
+  /// is true, the toast is not hidden automatically.
+  ToastHandle show(
+    BuildContext context,
+    T toast, {
+    Duration? duration,
+    bool persist = false,
+  }) {
+    final _ToastEntry<T> entry = _ToastEntry<T>(
+      this,
+      toast,
+      duration: duration,
+      persist: persist,
+    );
+
     if (_overlayEntry == null) _insertOverlay(context);
 
     if (_animatedListKey.currentState != null) {
-      _insert(toast);
-      return;
+      _insert(entry);
+      return entry;
     }
 
     // The list inside a new overlay entry is built during the next frame.
     // Wait for it so the entrance animation of the toast is played.
-    _pendingCount++;
+    _pendingToasts.add(entry);
     SchedulerBinding.instance
       ..addPostFrameCallback((_) {
-        _pendingCount--;
-        if (mounted) _insert(toast);
+        // The toast is no longer pending if it was hidden in the meantime.
+        if (mounted && _pendingToasts.remove(entry)) _insert(entry);
       })
       ..ensureVisualUpdate();
+    return entry;
   }
 
   /// Hides [item] with an exit animation.
@@ -136,12 +205,25 @@ class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
   /// [builder] builds the toast while it animates out. If it is omitted,
   /// [ToastListOverlay.itemBuilder] is used.
   ///
-  /// Does nothing if [item] is not displayed.
+  /// If several displayed toasts are equal to [item], the newest one is
+  /// hidden. Does nothing if [item] is not displayed.
   void removeItem(T item, [AnimatedRemovedItemBuilder? builder]) {
     final int index = _toasts.indexWhere((toast) => toast.item == item);
     if (index == -1) return;
 
     _removeAt(index, builder);
+  }
+
+  void _hide(_ToastEntry<T> entry, AnimatedRemovedItemBuilder? builder) {
+    if (!entry._isShowing) return;
+
+    final int index = _toasts.indexOf(entry);
+    if (index != -1) {
+      _removeAt(index, builder);
+    } else if (_pendingToasts.remove(entry)) {
+      entry._isShowing = false;
+      _removeOverlayIfIdle();
+    }
   }
 
   void _insertOverlay(BuildContext context) {
@@ -164,21 +246,22 @@ class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
   }
 
   void _removeOverlayIfIdle() {
-    if (_toasts.isEmpty && _pendingCount == 0 && _removingCount == 0) {
+    if (_toasts.isEmpty && _pendingToasts.isEmpty && _removingCount == 0) {
       _removeOverlay();
     }
   }
 
-  void _insert(T toast) {
+  void _insert(_ToastEntry<T> entry) {
     while (_toasts.length >= widget.limit) {
       _removeAt(_toasts.length - 1);
     }
 
-    final _ToastEntry<T> entry = _ToastEntry<T>(toast);
-    entry.timer = Timer(widget.timeoutDuration, () {
-      final int index = _toasts.indexOf(entry);
-      if (index != -1) _removeAt(index);
-    });
+    if (!entry.persist) {
+      entry.timer = Timer(
+        entry.duration ?? widget.timeoutDuration,
+        () => _hide(entry, null),
+      );
+    }
 
     _toasts.insert(0, entry);
     _animatedListKey.currentState?.insertItem(0);
@@ -186,7 +269,9 @@ class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
 
   void _removeAt(int index, [AnimatedRemovedItemBuilder? builder]) {
     final _ToastEntry<T> entry = _toasts.removeAt(index);
-    entry.timer?.cancel();
+    entry
+      .._isShowing = false
+      ..timer?.cancel();
 
     final AnimatedListState? animatedList = _animatedListKey.currentState;
     if (animatedList == null) {
@@ -253,39 +338,43 @@ class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
 
   @override
   void dispose() {
-    for (final _ToastEntry<T> toast in _toasts) {
-      toast.timer?.cancel();
+    for (final _ToastEntry<T> toast in <_ToastEntry<T>>[
+      ..._pendingToasts,
+      ..._toasts,
+    ]) {
+      toast
+        .._isShowing = false
+        ..timer?.cancel();
     }
+    _pendingToasts.clear();
     _toasts.clear();
     _removeOverlay();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) {
-    return _ToastListScope(
-      toastListOverlayState: this,
-      child: widget.child,
-    );
-  }
+  Widget build(BuildContext context) => widget.child;
 }
 
-class _ToastEntry<T> {
-  _ToastEntry(this.item);
+class _ToastEntry<T> implements ToastHandle {
+  _ToastEntry(
+    this._state,
+    this.item, {
+    required this.duration,
+    required this.persist,
+  });
 
+  final ToastListOverlayState<T> _state;
   final T item;
+  final Duration? duration;
+  final bool persist;
   Timer? timer;
-}
-
-class _ToastListScope extends InheritedWidget {
-  const _ToastListScope({
-    required super.child,
-    required ToastListOverlayState toastListOverlayState,
-  }) : _toastListOverlayState = toastListOverlayState;
-
-  final ToastListOverlayState _toastListOverlayState;
+  bool _isShowing = true;
 
   @override
-  bool updateShouldNotify(_ToastListScope old) =>
-      _toastListOverlayState != old._toastListOverlayState;
+  bool get isShowing => _isShowing;
+
+  @override
+  void hide([AnimatedRemovedItemBuilder? builder]) =>
+      _state._hide(this, builder);
 }
