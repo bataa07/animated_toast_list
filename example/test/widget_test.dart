@@ -8,11 +8,11 @@ void main() {
 
     await tester.tap(find.text('Show Success Toast'));
     await tester.pumpAndSettle();
-    expect(find.text('Item success'), findsOneWidget);
+    expect(find.text('Saved successfully'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Close'));
     await tester.pumpAndSettle();
-    expect(find.text('Item success'), findsNothing);
+    expect(find.text('Saved successfully'), findsNothing);
   });
 
   testWidgets('hides toasts after the timeout', (tester) async {
@@ -22,13 +22,13 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Show Failed Toast'));
     await tester.pumpAndSettle();
-    expect(find.text('Item info'), findsOneWidget);
-    expect(find.text('Item failed'), findsOneWidget);
+    expect(find.text('A new version is available'), findsOneWidget);
+    expect(find.text('Connection failed'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
-    expect(find.text('Item info'), findsNothing);
-    expect(find.text('Item failed'), findsNothing);
+    expect(find.text('A new version is available'), findsNothing);
+    expect(find.text('Connection failed'), findsNothing);
   });
 
   testWidgets('keeps a persistent toast until it is closed', (tester) async {
@@ -38,11 +38,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.pump(const Duration(minutes: 1));
     await tester.pumpAndSettle();
-    expect(find.text('Item persistent'), findsOneWidget);
+    expect(find.text('Stays until you close it'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Close'));
     await tester.pumpAndSettle();
-    expect(find.text('Item persistent'), findsNothing);
+    expect(find.text('Stays until you close it'), findsNothing);
   });
 
   testWidgets('keeps the toast visible while navigating', (tester) async {

@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:animated_toast_list/animated_toast_list.dart';
 import 'package:flutter/material.dart';
 
@@ -43,38 +41,44 @@ class SampleApp extends StatelessWidget {
 class MainScreen extends StatelessWidget {
   const MainScreen({super.key});
 
+  static const Map<ToastType, String> _messages = {
+    ToastType.success: 'Saved successfully',
+    ToastType.warning: 'Your session expires soon',
+    ToastType.info: 'A new version is available',
+    ToastType.failed: 'Connection failed',
+  };
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('Hello World!'),
-            Wrap(
-              alignment: WrapAlignment.center,
-              children: [
-                for (final ToastType type in ToastType.values)
-                  TextButton(
-                    onPressed: () =>
-                        context.showToast(MyToastModel(type.name, type)),
-                    child: Text('Show ${_capitalize(type.name)} Toast'),
-                  ),
-                TextButton(
-                  // Stays until the close button is pressed.
-                  onPressed: () => context.showToast(
-                    MyToastModel('persistent', ToastType.info),
-                    persist: true,
-                  ),
-                  child: const Text('Show Persistent Toast'),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final ToastType type in ToastType.values)
+                FilledButton.tonal(
+                  onPressed: () =>
+                      context.showToast(MyToastModel(_messages[type]!, type)),
+                  child: Text('Show ${_capitalize(type.name)} Toast'),
                 ),
-              ],
-            ),
-            TextButton(
-              onPressed: () => _navigate(context),
-              child: const Text('Show toast and Navigate'),
-            ),
-          ],
+              FilledButton.tonal(
+                // Stays until the close button is pressed.
+                onPressed: () => context.showToast(
+                  MyToastModel('Stays until you close it', ToastType.info),
+                  persist: true,
+                ),
+                child: const Text('Show Persistent Toast'),
+              ),
+              OutlinedButton(
+                onPressed: () => _navigate(context),
+                child: const Text('Show toast and Navigate'),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -83,7 +87,7 @@ class MainScreen extends StatelessWidget {
   void _navigate(BuildContext context) {
     // The toast stays visible on the next screen.
     context.showToast(
-      MyToastModel('${Random().nextInt(100)}', ToastType.success),
+      MyToastModel('Shown before navigating', ToastType.success),
     );
 
     Navigator.push(
@@ -106,11 +110,11 @@ class SecondScreen extends StatelessWidget {
         title: const Text('Second screen'),
       ),
       body: Center(
-        child: ElevatedButton(
+        child: FilledButton(
           onPressed: () {
             Navigator.pop(context);
             context.showToast(
-              MyToastModel('${Random().nextInt(100)}', ToastType.failed),
+              MyToastModel('Shown after going back', ToastType.info),
             );
           },
           child: const Text('Go back!'),
@@ -134,25 +138,33 @@ class ToastItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final TextStyle? textStyle =
-        Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white);
+    final (Color color, IconData icon) = switch (item.type) {
+      ToastType.success => (const Color(0xFF2E9E6A), Icons.check_circle),
+      ToastType.warning => (const Color(0xFFD9822B), Icons.warning_rounded),
+      ToastType.info => (const Color(0xFF1F7FB8), Icons.info),
+      ToastType.failed => (const Color(0xFFD64541), Icons.error),
+    };
 
     // Lets screen readers announce the toast when it appears.
     return Semantics(
       liveRegion: true,
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: FadeTransition(
-          opacity: animation,
-          child: SizeTransition(
-            sizeFactor: animation,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: _getTypeColor(item.type),
-                borderRadius: const BorderRadius.all(Radius.circular(12.0)),
-              ),
+      child: FadeTransition(
+        opacity: animation,
+        child: SizeTransition(
+          sizeFactor: animation,
+          // The padding is inside the SizeTransition, so it shrinks with the
+          // toast and leaves room for the shadow.
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Material(
+              color: color,
+              elevation: 4,
+              borderRadius: const BorderRadius.all(Radius.circular(12.0)),
               child: ListTile(
-                title: Text('Item ${item.message}', style: textStyle),
+                iconColor: Colors.white,
+                textColor: Colors.white,
+                leading: Icon(icon),
+                title: Text(item.message),
                 trailing: IconButton(
                   icon: const Icon(Icons.close),
                   color: Colors.white,
@@ -165,14 +177,5 @@ class ToastItem extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Color _getTypeColor(ToastType type) {
-    return switch (type) {
-      ToastType.success => const Color(0xFF3DD89B),
-      ToastType.warning => const Color(0xFFFFD873),
-      ToastType.info => const Color(0xFF17A2B8),
-      ToastType.failed => const Color(0xFFFF4E43),
-    };
   }
 }

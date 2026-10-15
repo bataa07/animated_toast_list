@@ -1,0 +1,3 @@
+# The GIFs are only used by the README, which links to them on GitHub.
+# Keeping them out of the published package keeps it small.
+*.gif

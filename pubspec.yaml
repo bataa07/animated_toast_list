@@ -10,6 +10,10 @@ topics:
   - overlay
   - animation
 
+screenshots:
+  - description: An animated list of toasts with a custom design.
+    path: screenshots/overview.png
+
 environment:
   sdk: ">=3.0.0 <4.0.0"
   flutter: ">=3.10.0"

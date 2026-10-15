@@ -26,7 +26,7 @@
 - Throw a descriptive error when no `Overlay` is found instead of silently
   ignoring it.
 - Add API documentation and tests.
-- Update the example app to the latest Flutter.
+- Update the example app to the latest Flutter, with new screenshots.
 
 ## 1.0.2
 
