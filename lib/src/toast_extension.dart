@@ -39,7 +39,8 @@ extension ToastListExtension on BuildContext {
   /// Does nothing if no shown toast is equal to [toast].
   ///
   /// It can be called with any context below the [ToastListOverlay], also in
-  /// [State.initState] and [State.dispose].
+  /// [State.initState]. In [State.dispose], the context can no longer be used,
+  /// so use the [ToastHandle] returned by [showToast] instead.
   void hideToast<T>(T toast, [AnimatedRemovedItemBuilder? builder]) {
     ToastListOverlay.of<T>(this).removeItem(toast, builder);
   }

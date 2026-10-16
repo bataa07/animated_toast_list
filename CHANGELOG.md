@@ -25,9 +25,9 @@
   shown from a nested `Navigator`, such as the one of a tab or of a go_router
   `ShellRoute`, are no longer hidden by other tabs or routes, and toasts move
   to the new `Overlay` when the app is rebuilt with a new key.
-- `showToast`, `hideToast` and `ToastHandle.hide` can be called in
-  `initState` and `dispose`, and `showToast` with a context above the
-  `Navigator`, such as the context of a navigator key or of
+- `showToast` and `hideToast` can be called in `initState`, and
+  `ToastHandle.hide` also in `dispose`. `showToast` can be called with a
+  context above the `Navigator`, such as the context of a navigator key or of
   `MaterialApp.builder`.
 - Fix a new toast not being displayed until another frame was rendered, for
   example when it was shown from a `GestureDetector` (#9).

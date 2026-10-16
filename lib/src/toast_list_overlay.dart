@@ -301,6 +301,12 @@ class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
       try {
         _ensureOverlay(context);
       } catch (exception, stack) {
+        // There is no list, so the hidden toasts are removed right away.
+        _applyHides();
+        // When no toast is being shown, wait for the next one, which may find
+        // an Overlay again.
+        if (_pendingToasts.isEmpty) return;
+
         _dropPendingToasts();
         FlutterError.reportError(
           FlutterErrorDetails(
@@ -327,13 +333,7 @@ class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
     }
     _hasWaitedForList = false;
 
-    final Map<_ToastEntry<T>, AnimatedRemovedItemBuilder?> hiding =
-        Map<_ToastEntry<T>, AnimatedRemovedItemBuilder?>.of(_hidingToasts);
-    _hidingToasts.clear();
-    hiding.forEach((entry, builder) {
-      final int index = _toasts.indexOf(entry);
-      if (index != -1) _removeAt(index, builder);
-    });
+    _applyHides();
 
     _removeOverLimit(widget.limit);
 
@@ -342,6 +342,16 @@ class ToastListOverlayState<T> extends State<ToastListOverlay<T>> {
     );
     _pendingToasts.clear();
     pending.forEach(_insert);
+  }
+
+  void _applyHides() {
+    final Map<_ToastEntry<T>, AnimatedRemovedItemBuilder?> hiding =
+        Map<_ToastEntry<T>, AnimatedRemovedItemBuilder?>.of(_hidingToasts);
+    _hidingToasts.clear();
+    hiding.forEach((entry, builder) {
+      final int index = _toasts.indexOf(entry);
+      if (index != -1) _removeAt(index, builder);
+    });
   }
 
   void _dropPendingToasts() {

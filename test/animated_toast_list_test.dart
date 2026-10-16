@@ -888,6 +888,57 @@ void main() {
     expect(toast.isShowing, isFalse);
   });
 
+  testWidgets('does not report a missing Overlay when no toast is shown', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app());
+    _homeContext(tester).showToast('a', persist: true);
+    await tester.pumpAndSettle();
+
+    // For example, a loading screen without an Overlay replaces the app.
+    await tester.pumpWidget(
+      const ToastListOverlay<String>(
+        itemBuilder: _buildToast,
+        child: ColoredBox(color: Color(0xFF000000)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('does not show again a toast hidden without an Overlay', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app());
+    final NavigatorState navigator = tester.state(find.byType(Navigator));
+    navigator.push(
+      MaterialPageRoute<void>(builder: (_) => const _UploadScreen()),
+    );
+    await tester.pumpAndSettle();
+    expect(_toast('uploading'), findsOneWidget);
+
+    // The screen hides its toast in dispose while the app is replaced.
+    await tester.pumpWidget(
+      const ToastListOverlay<String>(
+        itemBuilder: _buildToast,
+        child: ColoredBox(color: Color(0xFF000000)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(_app());
+    _homeContext(tester).showToast('b');
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(_toast('b'), findsOneWidget);
+    expect(_toast('uploading'), findsNothing);
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+  });
+
   group('when it wraps a screen', () {
     Widget tabNavigator(int index) => Navigator(
           onGenerateRoute: (_) => MaterialPageRoute<void>(
