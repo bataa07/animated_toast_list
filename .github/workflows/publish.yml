@@ -1,0 +1,28 @@
+name: Publish to pub.dev
+
+# Publishes the package when a tag like v2.0.0 is pushed, for example by
+# creating a GitHub release. The tag must match the version in pubspec.yaml.
+# Requires "Automated publishing" from GitHub Actions to be enabled on
+# pub.dev, with the tag pattern v{{version}}.
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      # Lets pub.dev verify that the job runs in this repository.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+      # Provides the pub.dev credentials from the OIDC token.
+      - uses: dart-lang/setup-dart@v1
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - run: flutter pub get
+      - run: flutter test
+      - run: dart pub publish --force
